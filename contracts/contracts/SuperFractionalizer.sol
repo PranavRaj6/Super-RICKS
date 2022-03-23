@@ -33,25 +33,6 @@ contract SuperFractionalizer is ISuperFractionalizer {
 
     ISuperTokenFactory internal immutable _factory;
 
-    address[] delegatorsList;
-
-    struct Delegator {
-        bool exists;
-        uint delegated;
-        uint loaned;
-    }
-    mapping(address => Delegator) public delegators;
-
-    address[] borrowersList;
-
-    struct Borrower {
-        bool allowed;
-        uint borrowed;
-        mapping(address => Delegator) linkedDelegators;
-    }
-
-    mapping(address => Borrower) borrowers;
-
     enum LoanAgreementState {
         inactive,
         active,
@@ -91,47 +72,28 @@ contract SuperFractionalizer is ISuperFractionalizer {
      **/
     function delegate(uint256 _amount, address _ricksAddress) public {
         uint256 amount = _amount * decimals;
-        dai.safeTransferFrom(msg.sender, address(this), amount);
+        dai.transferFrom(msg.sender, address(this), amount);
+        dai.approve(address(aaveLendingPool), amount);
         aaveLendingPool.deposit(address(dai), amount, msg.sender, 0);
-        // if (!delegators[msg.sender].exists) {
-        //     delegatorsList.push(msg.sender);
-        //     delegators[msg.sender].exists = true;
-        // }
-        // delegators[msg.sender].delegated += amount;
         LoanAgreements[_ricksAddress].delegator = msg.sender;
         // emit Delegate(msg.sender, daiAmount);
     }
 
-    function depositCollateral(
-        address asset,
-        uint256 amount,
-        bool isPull
-    ) public {
-        if (isPull) {
-            IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
-        }
-        IERC20(asset).safeApprove(address(aaveLendingPool), amount);
-        aaveLendingPool.deposit(asset, amount, address(this), 0);
-    }
-
-    function approveBorrower(
-        address borrower,
-        uint256 amount,
-        address asset
-    ) public {
-        (, address stableDebtTokenAddress, ) = aaveDataProvider
-            .getReserveTokensAddresses(asset);
-        IStableDebtToken(stableDebtTokenAddress).approveDelegation(
-            borrower,
-            amount
+    function withdraw(uint256 _amount, address _ricksAddress) public {
+        require(
+            LoanAgreements[_ricksAddress].delegator == msg.sender,
+            "you do not have a delegator yet"
         );
-    }
-
-    function withdraw() public {
-        uint256 adaiBalance = aDai.balanceOf(address(msg.sender));
-        aDai.approve(address(this), adaiBalance);
-        aDai.transferFrom(msg.sender, address(this), adaiBalance);
-        aaveLendingPool.withdraw(address(dai), adaiBalance, msg.sender);
+        require(
+            LoanAgreements[_ricksAddress].agreementState ==
+                LoanAgreementState.inactive,
+            "loan agreement should be inactive"
+        );
+        uint256 amount = _amount * decimals;
+        aDai.transferFrom(msg.sender, address(this), amount);
+        aaveLendingPool.withdraw(address(dai), amount, msg.sender);
+        LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
+            .finalized;
     }
 
     function createLoanAgreement(
@@ -173,40 +135,30 @@ contract SuperFractionalizer is ISuperFractionalizer {
      * the token's rate is aave's stable rate + the pools rate (TBD)
      * borrower has to be whitelisted
      **/
-    // function borrow(address _ricksAddress) external {
-    //     require(
-    //         LoanAgreements[_ricksAddress].borrower == msg.sender,
-    //         "not an allowed borrower"
-    //     );
-    //     require(
-    //         LoanAgreements[_ricksAddress].delegator != address(0),
-    //         "you do not have a delegator yet"
-    //     );
-    //     require(
-    //         LoanAgreements[_ricksAddress].agreementState ==
-    //             LoanAgreementState.inactive,
-    //         "loan agreement should be inactive"
-    //     );
+    function borrow(address _ricksAddress) external {
+        require(
+            LoanAgreements[_ricksAddress].borrower == msg.sender,
+            "not an allowed borrower"
+        );
+        require(
+            LoanAgreements[_ricksAddress].delegator != address(0),
+            "you do not have a delegator yet"
+        );
+        require(
+            LoanAgreements[_ricksAddress].agreementState ==
+                LoanAgreementState.inactive,
+            "loan agreement should be inactive"
+        );
 
-    //     uint amountToBorrow = LoanAgreements[_ricksAddress].amount;
-    //     address delegator = LoanAgreements[_ricksAddress].delegator;
-    //     aaveLendingPool.borrow(address(dai), amountToBorrow, 1, 0, delegator);
+        uint amountToBorrow = LoanAgreements[_ricksAddress].amount;
+        address delegator = LoanAgreements[_ricksAddress].delegator;
+        aaveLendingPool.borrow(address(dai), amountToBorrow, 1, 0, delegator);
 
-    //     // borrowers[msg.sender].borrowed = amountToBorrow;
-    //     LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
-    //         .active;
-    //     dai.transfer(msg.sender, amountToBorrow);
-    // }
-
-    function borrowFromDelegator(uint256 _amount, address _delegator) external {
-        // (, address stableDebtTokenAddress, ) = aaveDataProvider
-        //     .getReserveTokensAddresses(address(dai));
-        // IStableDebtToken(stableDebtTokenAddress).approveDelegation(
-        //     address(this),
-        //     _amount
-        // );
-        aaveLendingPool.borrow(address(dai), _amount, 1, 0, _delegator);
-        // dai.transfer(msg.sender, _amount);
+        // borrowers[msg.sender].borrowed = amountToBorrow;
+        LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
+            .active;
+        dai.approve(msg.sender, amountToBorrow);
+        dai.transfer(msg.sender, amountToBorrow);
     }
 
     /**
@@ -227,16 +179,12 @@ contract SuperFractionalizer is ISuperFractionalizer {
                 LoanAgreementState.active,
             "loan agreement is not active"
         );
-        // (, address stableDebtTokenAddress, ) = aaveDataProvider
-        //     .getReserveTokensAddresses(address(dai));
-        // IStableDebtToken debtToken = IStableDebtToken(
-        //     address(stableDebtTokenAddress)
-        // );
 
         uint borrowedAmount = LoanAgreements[_ricksAddress].amount;
         address delegator = LoanAgreements[_ricksAddress].delegator;
 
         dai.transferFrom(msg.sender, address(this), borrowedAmount);
+        dai.approve(address(aaveLendingPool), borrowedAmount);
         aaveLendingPool.repay(address(dai), borrowedAmount, 1, delegator);
     }
 
