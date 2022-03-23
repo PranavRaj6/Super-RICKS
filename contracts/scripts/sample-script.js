@@ -14,12 +14,16 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const Greeter = await hre.ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
+  const SuperFractionalizer = await hre.ethers.getContractFactory(
+    "SuperFractionalizer"
+  );
+  const superFractionalizer = await SuperFractionalizer.deploy(
+    "0x200657E2f123761662567A1744f9ACAe50dF47E6"
+  );
 
-  await greeter.deployed();
+  await superFractionalizer.deployed();
 
-  console.log("Greeter deployed to:", greeter.address);
+  console.log("SuperFractionalizer deployed to:", superFractionalizer.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

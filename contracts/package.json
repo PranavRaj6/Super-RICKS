@@ -7,5 +7,12 @@
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.6.1",
     "hardhat": "^2.9.1"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.5.0",
+    "@openzeppelin/test-helpers": "^0.5.15",
+    "@superfluid-finance/ethereum-contracts": "^1.1.1",
+    "@superfluid-finance/js-sdk": "^0.5.12",
+    "dotenv": "^16.0.0"
   }
 }
