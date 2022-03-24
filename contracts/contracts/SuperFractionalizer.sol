@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
+import {ISuperfluid, ISuperToken, ISuperApp, ISuperAgreement, SuperAppDefinitions} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol"; //"@superfluid-finance/ethereum-monorepo/packages/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+
+import {CFAv1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/CFAv1Library.sol";
+
+import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
+
+import {SuperAppBase} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
+
 import {ISuperFractionalizer} from "./interfaces/ISuperFractionalizer.sol";
 import {SuperFractionalized} from "./SuperFractionalized.sol";
 import {ISuperFractionalized} from "./interfaces/ISuperFractionalized.sol";
@@ -15,9 +23,17 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20, SafeMath} from "./utils/Libraries.sol";
 import {ISuperTokenFactory} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
 
-contract SuperFractionalizer is ISuperFractionalizer {
+contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
+
+    using CFAv1Library for CFAv1Library.InitData;
+
+    //initialize cfaV1 variable
+    CFAv1Library.InitData public cfaV1;
+
+    ISuperfluid private _host; // host
+    IConstantFlowAgreementV1 private _cfa; // the stored constant flow agreement class address
 
     // Aave pool management ! Mumbai addresses !
     ILendingPool constant aaveLendingPool =
@@ -55,10 +71,30 @@ contract SuperFractionalizer is ISuperFractionalizer {
 
     uint256 constant decimals = 1e18;
 
-    constructor(ISuperTokenFactory factory) {
+    constructor(ISuperTokenFactory factory, ISuperfluid host) {
         _factory = factory;
         dai.safeApprove(address(aaveLendingPool), 2**256 - 1);
         aDai.safeApprove(address(aaveLendingPool), 2**256 - 1);
+        assert(address(host) != address(0));
+        _host = host;
+        _cfa = IConstantFlowAgreementV1(
+            address(
+                host.getAgreementClass(
+                    keccak256(
+                        "org.superfluid-finance.agreements.ConstantFlowAgreement.v1"
+                    )
+                )
+            )
+        );
+        cfaV1 = CFAv1Library.InitData(_host, _cfa);
+
+        uint256 configWord = SuperAppDefinitions.APP_LEVEL_FINAL |
+            // change from 'before agreement stuff to after agreement
+            SuperAppDefinitions.BEFORE_AGREEMENT_CREATED_NOOP |
+            SuperAppDefinitions.BEFORE_AGREEMENT_UPDATED_NOOP |
+            SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
+
+        _host.registerApp(configWord);
     }
 
     /*
@@ -143,11 +179,7 @@ contract SuperFractionalizer is ISuperFractionalizer {
      * the token's rate is aave's stable rate + the pools rate (TBD)
      * borrower has to be whitelisted
      **/
-    function borrow(address _ricksAddress) external {
-        require(
-            LoanAgreements[_ricksAddress].borrower == msg.sender,
-            "not an allowed borrower"
-        );
+    function borrow(address _ricksAddress) internal {
         require(
             LoanAgreements[_ricksAddress].delegator != address(0),
             "you do not have a delegator yet"
@@ -160,13 +192,14 @@ contract SuperFractionalizer is ISuperFractionalizer {
 
         uint amountToBorrow = LoanAgreements[_ricksAddress].amount;
         address delegator = LoanAgreements[_ricksAddress].delegator;
+        address borrower = LoanAgreements[_ricksAddress].borrower;
         aaveLendingPool.borrow(address(dai), amountToBorrow, 1, 0, delegator);
 
         // borrowers[msg.sender].borrowed = amountToBorrow;
         LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
             .active;
-        dai.approve(msg.sender, amountToBorrow);
-        dai.transfer(msg.sender, amountToBorrow);
+        dai.approve(borrower, amountToBorrow);
+        dai.transfer(borrower, amountToBorrow);
     }
 
     /**
@@ -196,6 +229,145 @@ contract SuperFractionalizer is ISuperFractionalizer {
         aaveLendingPool.repay(address(dai), borrowedAmount, 1, delegator);
         LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
             .inactive;
+    }
+
+    /// @dev If a new stream is opened, or an existing one is opened
+    function _aggrementCreated(ISuperToken _superToken) private {
+        // @dev This will give me the new flowRate, as it is called in after callbacks
+        int96 netFlowRate = _cfa.getNetFlow(_superToken, address(this));
+
+        // @dev If inFlowRate === 0, then delete existing flow.
+        if (netFlowRate != int96(0)) {
+            // @dev if netFlowRate is zero, delete outflow.
+            borrow(address(_superToken));
+        }
+    }
+
+    /// @dev If a new stream is opened, or an existing one is opened
+    function _aggrementTerminated(ISuperToken _superToken) private {
+        // @dev This will give me the new flowRate, as it is called in after callbacks
+        int96 netFlowRate = _cfa.getNetFlow(_superToken, address(this));
+
+        // @dev If inFlowRate === 0, then delete existing flow.
+        if (netFlowRate == int96(0)) {
+            // @dev if netFlowRate is zero, delete outflow.
+            uint256 streamedAmount = _superToken.balanceOf(address(this));
+            if (
+                LoanAgreements[address(_superToken)].agreementState ==
+                LoanAgreementState.inactive
+            ) {
+                _superToken.approve(
+                    LoanAgreements[address(_superToken)].borrower,
+                    streamedAmount
+                );
+                _superToken.transfer(
+                    LoanAgreements[address(_superToken)].borrower,
+                    streamedAmount
+                );
+            } else {
+                _superToken.approve(
+                    LoanAgreements[address(_superToken)].delegator,
+                    streamedAmount
+                );
+                _superToken.transfer(
+                    LoanAgreements[address(_superToken)].delegator,
+                    streamedAmount
+                );
+            }
+        }
+    }
+
+    function afterAgreementCreated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, // _agreementId,
+        bytes calldata, /*_agreementData*/
+        bytes calldata, // _cbdata,
+        bytes calldata _ctx
+    )
+        external
+        override
+        onlyExpected(_superToken, _agreementClass, _ctx)
+        onlyHost
+        returns (bytes memory newCtx)
+    {
+        _aggrementCreated(_superToken);
+        return _ctx;
+    }
+
+    function afterAgreementUpdated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata agreementData,
+        bytes calldata, //_cbdata,
+        bytes calldata _ctx
+    )
+        external
+        override
+        onlyExpected(_superToken, _agreementClass, _ctx)
+        onlyHost
+        returns (bytes memory newCtx)
+    {
+        _aggrementCreated(_superToken);
+        return _ctx;
+    }
+
+    function afterAgreementTerminated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata, /*_agreementData*/
+        bytes calldata, //_cbdata,
+        bytes calldata _ctx
+    ) external override onlyHost returns (bytes memory newCtx) {
+        // According to the app basic law, we should never revert in a termination callback
+        if (
+            !_isTokenExpected(address(_superToken), _ctx) ||
+            !_isCFAv1(_agreementClass)
+        ) return _ctx;
+        _aggrementTerminated(_superToken);
+        return _ctx;
+    }
+
+    function _isCFAv1(address agreementClass) private view returns (bool) {
+        return
+            ISuperAgreement(agreementClass).agreementType() ==
+            keccak256(
+                "org.superfluid-finance.agreements.ConstantFlowAgreement.v1"
+            );
+    }
+
+    function _isTokenExpected(address _ricksAddress, bytes calldata _ctx)
+        private
+        view
+        returns (bool)
+    {
+        // decode Context - store full context as uData variable for easy visualization purposes
+        address user = _host.decodeCtx(_ctx).msgSender;
+
+        return LoanAgreements[_ricksAddress].borrower == user;
+    }
+
+    modifier onlyHost() {
+        require(
+            msg.sender == address(_host),
+            "RedirectAll: support only one host"
+        );
+        _;
+    }
+
+    modifier onlyExpected(
+        ISuperToken superToken,
+        address agreementClass,
+        bytes calldata _ctx
+    ) {
+        require(
+            _isTokenExpected(address(superToken), _ctx),
+            "RedirectAll: not expected token"
+        );
+        require(_isCFAv1(agreementClass), "RedirectAll: only CFAv1 supported");
+        _;
     }
 
     /// @dev Implementation of ISuperFractionalizer.fractionalize

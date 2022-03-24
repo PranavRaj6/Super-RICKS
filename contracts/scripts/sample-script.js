@@ -18,7 +18,8 @@ async function main() {
     "SuperFractionalizer"
   );
   const superFractionalizer = await SuperFractionalizer.deploy(
-    "0xF5F666AC8F581bAef8dC36C7C8828303Bd4F8561"
+    "0xF5F666AC8F581bAef8dC36C7C8828303Bd4F8561",
+    "0xF0d7d1D47109bA426B9D8A3Cde1941327af1eea3"
   );
 
   await superFractionalizer.deployed();
