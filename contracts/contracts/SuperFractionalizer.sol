@@ -34,9 +34,10 @@ contract SuperFractionalizer is ISuperFractionalizer {
     ISuperTokenFactory internal immutable _factory;
 
     enum LoanAgreementState {
+        initiated,
         inactive,
         active,
-        finalized
+        closed
     }
 
     struct LoanAgreement {
@@ -71,11 +72,18 @@ contract SuperFractionalizer is ISuperFractionalizer {
      * @dev Deposits an amount of dai to aave and delegates all its borrowing power to the pool
      **/
     function delegate(uint256 _amount, address _ricksAddress) public {
+        require(
+            LoanAgreements[_ricksAddress].agreementState ==
+                LoanAgreementState.initiated,
+            "loan agreement should be initiated"
+        );
         uint256 amount = _amount * decimals;
         dai.transferFrom(msg.sender, address(this), amount);
         dai.approve(address(aaveLendingPool), amount);
         aaveLendingPool.deposit(address(dai), amount, msg.sender, 0);
         LoanAgreements[_ricksAddress].delegator = msg.sender;
+        LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
+            .inactive;
         // emit Delegate(msg.sender, daiAmount);
     }
 
@@ -93,7 +101,7 @@ contract SuperFractionalizer is ISuperFractionalizer {
         aDai.transferFrom(msg.sender, address(this), amount);
         aaveLendingPool.withdraw(address(dai), amount, msg.sender);
         LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
-            .finalized;
+            .closed;
     }
 
     function createLoanAgreement(
@@ -115,7 +123,7 @@ contract SuperFractionalizer is ISuperFractionalizer {
             initialSupply
         );
         LoanAgreement memory newAgreement = LoanAgreement({
-            agreementState: LoanAgreementState.inactive,
+            agreementState: LoanAgreementState.initiated,
             tokenId: _tokenId,
             borrower: msg.sender,
             delegator: address(0),
@@ -186,6 +194,8 @@ contract SuperFractionalizer is ISuperFractionalizer {
         dai.transferFrom(msg.sender, address(this), borrowedAmount);
         dai.approve(address(aaveLendingPool), borrowedAmount);
         aaveLendingPool.repay(address(dai), borrowedAmount, 1, delegator);
+        LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
+            .inactive;
     }
 
     /// @dev Implementation of ISuperFractionalizer.fractionalize
