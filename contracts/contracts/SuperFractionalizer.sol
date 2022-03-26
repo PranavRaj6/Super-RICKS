@@ -20,12 +20,15 @@ import {IProtocolDataProvider} from "./interfaces/IProtocolDataProvider.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import {SafeERC20, SafeMath} from "./utils/Libraries.sol";
 import {ISuperTokenFactory} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
 
 contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
+    using Counters for Counters.Counter;
+    Counters.Counter private _loanIds;
 
     using CFAv1Library for CFAv1Library.InitData;
 
@@ -64,10 +67,12 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
         uint256 agreementPeriod;
         uint amount;
         address tokenAddress;
+        address ricksAddress;
     }
 
     mapping(address => LoanAgreement) public LoanAgreements;
     mapping(address => address[]) public tokenAddressToRicks;
+    mapping(uint256 => LoanAgreement) public loanIdsToAgreement;
 
     uint256 constant decimals = 1e18;
 
@@ -102,6 +107,21 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
      */
     function getRicksCount(address _address) public view returns (uint256) {
         return tokenAddressToRicks[_address].length;
+    }
+
+    /* Returns all unsold market items */
+    function fetchAllAgreements() public view returns (LoanAgreement[] memory) {
+        uint itemCount = _loanIds.current();
+        uint currentIndex = 0;
+
+        LoanAgreement[] memory items = new LoanAgreement[](itemCount);
+        for (uint i = 0; i < itemCount; i++) {
+            uint currentId = i + 1;
+            LoanAgreement storage currentItem = loanIdsToAgreement[currentId];
+            items[currentIndex] = currentItem;
+            currentIndex += 1;
+        }
+        return items;
     }
 
     /**
@@ -165,10 +185,14 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
             delegator: address(0),
             agreementPeriod: block.timestamp + 2 days,
             amount: amount,
-            tokenAddress: _tokenAddress
+            tokenAddress: _tokenAddress,
+            ricksAddress: _ricksAddress
         });
         LoanAgreements[_ricksAddress] = newAgreement;
         tokenAddressToRicks[_tokenAddress].push(_ricksAddress);
+        _loanIds.increment();
+        uint256 newLoanId = _loanIds.current();
+        loanIdsToAgreement[newLoanId] = newAgreement;
     }
 
     // BORROWER METHODS
