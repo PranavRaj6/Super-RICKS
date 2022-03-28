@@ -42,12 +42,6 @@ export const ApplicationCreateTokenButton = React.memo(
     const onSubmit = useCallback(
       async (values) => {
         setLoading(true);
-        // await onCreateToken(
-        // 	values.tokenAddress,
-        // 	values.tokenId,
-        // 	Math.ceil(Number(+values.price) * DEFAULT_GAS_PRECISION),
-        // 	+values.duration * (1000 * 60 * 60 * 24)
-        // );
         const nftContract = new ethers.Contract(
           values.tokenAddress,
           ERC721.abi,
@@ -82,6 +76,15 @@ export const ApplicationCreateTokenButton = React.memo(
 
         // Clear fields for next time
         form.resetFields();
+        setAgreement({
+          tokenId: "",
+          tokenAddress: "",
+          tokenUri: "",
+          amount: 0,
+          name: "",
+          symbol: "",
+          initialSupply: 0,
+        });
       },
       [form]
     );

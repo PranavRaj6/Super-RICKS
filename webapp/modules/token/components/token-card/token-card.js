@@ -21,7 +21,6 @@ export const TokenCard = React.memo(function TokenCard({
 
 	const durationInDays = 3;
 	
-	// console.log("NFT: ", nft);
 
   return (
     <div style={style}>

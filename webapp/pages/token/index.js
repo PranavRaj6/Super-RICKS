@@ -17,6 +17,9 @@ import { GasIcon } from "../../common/icons/gas-icon";
 import { TokenActionBar } from "../../modules/token";
 import SuperFractionalizer from "../../../contracts/artifacts/contracts/SuperFractionalizer.sol/SuperFractionalizer.json";
 import ERC721 from "../../../contracts/artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json";
+import IERC20 from "../../../contracts/artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json";
+import IStableDebtToken from "../../../contracts/artifacts/contracts/interfaces/IStableDebtToken.sol/IStableDebtToken.json";
+import { loadAgreements } from "../../utils/client";
 
 export default function IndexPage() {
   const [state, dispatch] = useContext(GlobalContext);
@@ -39,7 +42,9 @@ export default function IndexPage() {
 
   const onLoadAgreement = useCallback(async (ricksAddress) => {
     try {
-      const _loanAgreement = await state.ricksContract.LoanAgreements(ricksAddress);
+      const _loanAgreement = await state.ricksContract.LoanAgreements(
+        ricksAddress
+      );
       setAgreement(_loanAgreement);
     } catch (error) {
       message.error("An error occurred loading loanAgreement from token id.");
@@ -52,17 +57,15 @@ export default function IndexPage() {
     }
   }, [ricksAddress, onLoadAgreement]);
 
+  console.log("nft: ", nft);
+
   useEffect(() => {
     const loadNFT = async (_loanAgreement) => {
       try {
         let borrower = ethers.utils.getAddress(_loanAgreement.borrower);
         let delegator = ethers.utils.getAddress(_loanAgreement.delegator);
-        let tokenAddress = ethers.utils.getAddress(
-          _loanAgreement.tokenAddress
-        );
-        let ricksAddress = ethers.utils.getAddress(
-          _loanAgreement.ricksAddress
-        );
+        let tokenAddress = ethers.utils.getAddress(_loanAgreement.tokenAddress);
+        let ricksAddress = ethers.utils.getAddress(_loanAgreement.ricksAddress);
         const nftContract = new ethers.Contract(
           tokenAddress,
           ERC721.abi,
@@ -80,7 +83,8 @@ export default function IndexPage() {
           tokenUri,
           ricksAddress,
           name,
-          symbol
+          symbol,
+          agreementState: _loanAgreement.agreementState,
         };
         setNFT(item);
       } catch (error) {
@@ -93,30 +97,70 @@ export default function IndexPage() {
     }
   }, [loanAgreement]);
 
-  const onCloseToken = () => {};
-  const onRevokeToken = () => {};
-  const onWithdrawToken = () => {};
-  const onRentToken = () => {};
-  const onPayToken = () => {};
+  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+  const onRepay = () => {};
+  const onReconstitute = () => {};
+  const startStream = () => {};
+  const onDelegate = async (_amount, _ricksAddress) => {
+    const erc20Contract = new ethers.Contract(
+      process.env.NEXT_PUBLIC_ERC20_TOKEN,
+      IERC20.abi,
+      state.signer
+    );
+    await erc20Contract.approve(
+      process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+      ethers.BigNumber.from((_amount * 10 ** 18).toString())
+    );
+    await delay(5000);
+    const debtTokenContract = new ethers.Contract(
+      process.env.NEXT_PUBLIC_STABLE_DEBT_TOKEN,
+      IStableDebtToken.abi,
+      state.signer
+    );
+    await debtTokenContract.approveDelegation(
+      process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+      ethers.BigNumber.from((_amount * 10 ** 18).toString())
+    );
+    await delay(5000);
+
+    const ricksContract = new ethers.Contract(
+      process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+      SuperFractionalizer.abi,
+      state.signer
+    );
+    await delay(5000);
+    await ricksContract.delegate(
+      ethers.BigNumber.from(_amount.toString()),
+      ethers.utils.getAddress(_ricksAddress)
+    );
+    await delay(5000);
+
+    await setTimeout(function () {
+      loadAgreements(dispatch);
+    }, 3000);
+  };
+  const onWithdraw = () => {};
   const onNoAccount = () => {};
 
   // Data needed for the status
-//   const status = useMemo(() => {
-//     if (rent) {
-//       switch (rent.state) {
-//         case StateType.Open:
-//           return ["success", "Open"];
-//         case StateType.Rented:
-//           return ["warning", "Rented"];
-//         case StateType.Closed:
-//           return ["danger", "Closed"];
-//       }
-//     }
-//     return ["", ""];
-//   }, [rent]);
-	const status = ["success", "Open"];
+  const status = useMemo(() => {
+    if (loanAgreement) {
+      switch (loanAgreement.agreementState) {
+        case 0:
+          return ["success", "Open"];
+        case 1:
+          return ["warning", "Inactive"];
+        case 2:
+          return ["success", "Active"];
+        case 3:
+          return ["danger", "Closed"];
+      }
+    }
+    return ["", ""];
+  }, [loanAgreement]);
 
-  const durationInDays = 5
+  const durationInDays = 5;
 
   return (
     <>
@@ -174,9 +218,7 @@ export default function IndexPage() {
 
               <div>
                 <Typography.Title>
-                  {nft
-                    ? "#" + nft.tokenId + " " + nft.name
-                    : undefined}
+                  {nft ? "#" + nft.tokenId + " " + nft.name : undefined}
                 </Typography.Title>
               </div>
 
@@ -194,10 +236,7 @@ export default function IndexPage() {
                 </Typography.Text>
 
                 <Link
-                  href={
-                    "/owner?address=" +
-                    (nft ? nft.borrower : undefined)
-                  }
+                  href={"/owner?address=" + (nft ? nft.borrower : undefined)}
                 >
                   <a className={"g-link-no-border"}>
                     <Typography.Text>
@@ -226,9 +265,7 @@ export default function IndexPage() {
                     style={{ fontSize: "42px", marginRight: 16 }}
                   />
                   <Typography.Title level={2} style={{ marginBottom: 0 }}>
-                    {nft
-                      ? Math.ceil(Number(nft.amount))
-                      : "-"}
+                    {nft ? Math.ceil(Number(nft.amount)) : "-"}
                   </Typography.Title>
 
                   <Typography.Text
@@ -254,19 +291,19 @@ export default function IndexPage() {
                 </div>
               </Card>
 
-              {/* {loanAgreement && (
+              {nft && (
                 <TokenActionBar
-                  rent={loanAgreement}
+                  agreement={nft}
                   account={state.address}
-                  onCloseToken={onCloseToken}
-                  onRevokeToken={onRevokeToken}
-                  onWithdrawToken={onWithdrawToken}
-                  onRentToken={onRentToken}
-                  onPayToken={onPayToken}
+                  onRepay={onRepay}
+                  onReconstitute={onReconstitute}
+                  startStream={startStream}
+                  onDelegate={onDelegate}
+                  onWithdraw={onWithdraw}
                   onNoAccount={onNoAccount}
                   style={{ marginTop: 24 }}
                 />
-              )} */}
+              )}
             </div>
           </Col>
         </Row>

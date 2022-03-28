@@ -47,11 +47,11 @@ export async function loadAgreements(dispatch) {
         ricksAddress,
         name,
         symbol,
+        agreementState: i.agreementState,
       };
       return item;
     })
   );
-  console.log("items: ", items);
 
   dispatch({
     type: "SET_AGREEMENTS",
