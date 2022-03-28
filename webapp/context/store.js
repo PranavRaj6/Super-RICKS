@@ -1,7 +1,7 @@
 import React, { useReducer, createContext, useEffect } from "react";
 
 import { connectWallet } from "../utils/wallet";
-import { loadAgreements } from "../utils/client";
+import { loadAgreements, setContracts } from "../utils/client";
 
 
 
@@ -11,6 +11,8 @@ const initialState = {
   address: null,
   chainId: null,
   agreements: [],
+  signer: null,
+  ricksContract: null,
 };
 
 function reducer(state, action) {
@@ -22,6 +24,7 @@ function reducer(state, action) {
         web3Provider: action.web3Provider,
         address: action.address,
         chainId: action.chainId,
+        signer: action.signer
       };
     case "SET_ADDRESS":
       return {
@@ -37,6 +40,11 @@ function reducer(state, action) {
       return {
         ...state,
         agreements: action.agreements,
+      };
+    case "SET_RICKS_CONTRACT":
+      return {
+        ...state,
+        ricksContract: action.ricksContract,
       };
     case "RESET_WEB3_PROVIDER":
       return initialState;
@@ -54,6 +62,13 @@ const Store = ({ children }) => {
       loadAgreements(dispatch);
     }
   }, []);
+
+  useEffect(() => {
+    if (state.signer !== null) {
+      setContracts(state.signer, dispatch);
+    }
+    
+  }, [state.signer])
 
 
   return (

@@ -20,20 +20,6 @@ import ERC721 from "../../../contracts/artifacts/@openzeppelin/contracts/token/E
 
 export default function IndexPage() {
   const [state, dispatch] = useContext(GlobalContext);
-
-  const API_KEY = "wklV9CwfGnwr-U2zFTEN2CO1FkEPbryP";
-  const alchemyProvider = new providers.AlchemyProvider("kovan", API_KEY);
-  const contract = new ethers.Contract(
-    "0x8704Dd638939dE081ce681c504453E2ed6140499",
-    SuperFractionalizer.abi,
-    alchemyProvider
-  );
-  const nftContract = new ethers.Contract(
-    "0xf8fd0eaC2f4d405cAb579A684a1551491cc4234e",
-    ERC721.abi,
-    alchemyProvider
-  );
-  const signer = state.web3Provider.getSigner();
   const router = useRouter();
   // Extract ricksAddress from router query param
   const ricksAddress = useMemo(() => {
@@ -48,16 +34,15 @@ export default function IndexPage() {
   }, [router, ricksAddress]);
 
   // Data needed to populate the page
-  const [loanAgreements, setAgreement] = useState(null);
+  const [loanAgreement, setAgreement] = useState(null);
   const [nft, setNFT] = useState(null);
 
   const onLoadAgreement = useCallback(async (ricksAddress) => {
     try {
-      const _loanAgreements = await contract.LoanAgreements(ricksAddress);
-      console.log("_loanAgreements: ", _loanAgreements);
-      setAgreement(_loanAgreements);
+      const _loanAgreement = await state.ricksContract.LoanAgreements(ricksAddress);
+      setAgreement(_loanAgreement);
     } catch (error) {
-      message.error("An error occurred loading loanAgreements from token id.");
+      message.error("An error occurred loading loanAgreement from token id.");
     }
   }, []);
 
@@ -68,25 +53,34 @@ export default function IndexPage() {
   }, [ricksAddress, onLoadAgreement]);
 
   useEffect(() => {
-    const loadNFT = async (_loanAgreements) => {
+    const loadNFT = async (_loanAgreement) => {
       try {
-        const tokenUri = await nftContract.tokenURI(_loanAgreements.tokenId);
-        let borrower = ethers.utils.getAddress(_loanAgreements.borrower);
-        let delegator = ethers.utils.getAddress(_loanAgreements.delegator);
+        let borrower = ethers.utils.getAddress(_loanAgreement.borrower);
+        let delegator = ethers.utils.getAddress(_loanAgreement.delegator);
         let tokenAddress = ethers.utils.getAddress(
-          _loanAgreements.tokenAddress
+          _loanAgreement.tokenAddress
         );
         let ricksAddress = ethers.utils.getAddress(
-          _loanAgreements.ricksAddress
+          _loanAgreement.ricksAddress
         );
+        const nftContract = new ethers.Contract(
+          tokenAddress,
+          ERC721.abi,
+          state.signer
+        );
+        const tokenUri = await nftContract.tokenURI(_loanAgreement.tokenId);
+        const name = await nftContract.name();
+        const symbol = await nftContract.symbol();
         let item = {
-          tokenId: _loanAgreements.tokenId.toString(),
+          tokenId: _loanAgreement.tokenId.toString(),
           borrower,
           delegator,
-          amount: ethers.utils.formatUnits(_loanAgreements.amount, 18),
+          amount: ethers.utils.formatUnits(_loanAgreement.amount, 18),
           tokenAddress,
           tokenUri,
           ricksAddress,
+          name,
+          symbol
         };
         setNFT(item);
       } catch (error) {
@@ -94,10 +88,10 @@ export default function IndexPage() {
       }
     };
 
-    if (loanAgreements) {
-      loadNFT(loanAgreements);
+    if (loanAgreement) {
+      loadNFT(loanAgreement);
     }
-  }, [loanAgreements]);
+  }, [loanAgreement]);
 
   const onCloseToken = () => {};
   const onRevokeToken = () => {};
@@ -181,7 +175,7 @@ export default function IndexPage() {
               <div>
                 <Typography.Title>
                   {nft
-                    ? "#" + nft.ricksAddress + " " + nft.delegator
+                    ? "#" + nft.tokenId + " " + nft.name
                     : undefined}
                 </Typography.Title>
               </div>
@@ -202,12 +196,12 @@ export default function IndexPage() {
                 <Link
                   href={
                     "/owner?address=" +
-                    (loanAgreements ? loanAgreements.borrower : undefined)
+                    (nft ? nft.borrower : undefined)
                   }
                 >
                   <a className={"g-link-no-border"}>
                     <Typography.Text>
-                      {loanAgreements ? loanAgreements.borrower : undefined}
+                      {nft ? nft.borrower : undefined}
                     </Typography.Text>
                   </a>
                 </Link>
@@ -232,8 +226,8 @@ export default function IndexPage() {
                     style={{ fontSize: "42px", marginRight: 16 }}
                   />
                   <Typography.Title level={2} style={{ marginBottom: 0 }}>
-                    {loanAgreements
-                      ? Math.ceil(Number(loanAgreements.amount))
+                    {nft
+                      ? Math.ceil(Number(nft.amount))
                       : "-"}
                   </Typography.Title>
 
@@ -260,9 +254,9 @@ export default function IndexPage() {
                 </div>
               </Card>
 
-              {/* {loanAgreements && (
+              {/* {loanAgreement && (
                 <TokenActionBar
-                  rent={loanAgreements}
+                  rent={loanAgreement}
                   account={state.address}
                   onCloseToken={onCloseToken}
                   onRevokeToken={onRevokeToken}

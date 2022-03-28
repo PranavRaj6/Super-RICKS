@@ -29,7 +29,7 @@ export const TokenGrid = React.memo(function TokenGrid({
               style={{ marginBottom: 24 }}
               onClick={() => onClickRent(item)}
             >
-              <TokenCard rent={item} />
+              <TokenCard agreement={item} />
             </List.Item>
           );
 				}}

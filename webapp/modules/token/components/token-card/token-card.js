@@ -4,11 +4,11 @@ import Icon from "@ant-design/icons";
 import { GasIcon } from "../../../../common/icons/gas-icon";
 
 export const TokenCard = React.memo(function TokenCard({
-  rent,
+  agreement,
   // onLoadNFT,
   style,
 }) {
-  const [nft, setNFT] = useState(rent);
+  const [nft, setNFT] = useState(agreement);
 
   // useEffect(() => {
   // 	const loadNFT = async (_rent) => {
@@ -16,19 +16,19 @@ export const TokenCard = React.memo(function TokenCard({
   // 		setNFT(nft);
   // 	};
 
-  // 	loadNFT(rent);
-  // }, [rent, onLoadNFT]);
+  // 	loadNFT(agreement);
+  // }, [agreement, onLoadNFT]);
 
 	const durationInDays = 3;
 	
-	console.log("NFT: ", nft);
+	// console.log("NFT: ", nft);
 
   return (
     <div style={style}>
       <Card
         hoverable={true}
-        loading={!nft}
-        cover={<Image src={nft ? nft.tokenUri : undefined} preview={false} />}
+        loading={!agreement}
+        cover={<Image src={agreement ? agreement.tokenUri : undefined} preview={false} />}
       >
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div
@@ -40,9 +40,9 @@ export const TokenCard = React.memo(function TokenCard({
             }}
           >
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <Typography.Text>{nft ? nft.tokenId : ""}</Typography.Text>
+              <Typography.Text>{agreement ? agreement.tokenId : ""}</Typography.Text>
               <Typography.Text strong={true}>
-                {"#" + (nft ? nft.tokenId : "")}
+                {"#" + (agreement ? agreement.tokenId : "")}
               </Typography.Text>
             </div>
 
@@ -65,7 +65,7 @@ export const TokenCard = React.memo(function TokenCard({
               >
                 <Icon component={GasIcon} style={{ marginRight: 8 }} />
                 <Typography.Text strong={true}>
-                  {rent.amount}
+                  {agreement.amount}
                 </Typography.Text>
               </div>
             </div>

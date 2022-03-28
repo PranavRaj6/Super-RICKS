@@ -8,19 +8,16 @@ import ERC721 from "../../contracts/artifacts/@openzeppelin/contracts/token/ERC7
 
 export async function loadAgreements(dispatch) {
   /* create a generic provider and query for unsold market items */
-  const API_KEY = "wklV9CwfGnwr-U2zFTEN2CO1FkEPbryP";
-  const alchemyProvider = new providers.AlchemyProvider("kovan", API_KEY);
+  const alchemyProvider = new providers.AlchemyProvider(
+    "kovan",
+    process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+  );
   const contract = new ethers.Contract(
-    "0x8704Dd638939dE081ce681c504453E2ed6140499",
+    process.env.NEXT_PUBLIC_RICKS_CONTRACT,
     SuperFractionalizer.abi,
     alchemyProvider
   );
   const data = await contract.fetchAllAgreements();
-  const nftContract = new ethers.Contract(
-    "0xf8fd0eaC2f4d405cAb579A684a1551491cc4234e",
-    ERC721.abi,
-    alchemyProvider
-  );
 
   /*
    *  map over items returned from smart contract and format
@@ -28,11 +25,18 @@ export async function loadAgreements(dispatch) {
    */
   const items = await Promise.all(
     data.map(async (i) => {
-      const tokenUri = await nftContract.tokenURI(i.tokenId);
       let borrower = ethers.utils.getAddress(i.borrower);
       let delegator = ethers.utils.getAddress(i.delegator);
       let tokenAddress = ethers.utils.getAddress(i.tokenAddress);
-      let ricksAddress = ethers.utils.getAddress(i.ricksAddress)
+      let ricksAddress = ethers.utils.getAddress(i.ricksAddress);
+      const nftContract = new ethers.Contract(
+        tokenAddress,
+        ERC721.abi,
+        alchemyProvider
+      );
+      const tokenUri = await nftContract.tokenURI(i.tokenId);
+      const name = await nftContract.name();
+      const symbol = await nftContract.symbol();
       let item = {
         tokenId: i.tokenId.toString(),
         borrower,
@@ -41,16 +45,31 @@ export async function loadAgreements(dispatch) {
         tokenAddress,
         tokenUri,
         ricksAddress,
+        name,
+        symbol,
       };
       return item;
     })
   );
+  console.log("items: ", items);
 
   dispatch({
     type: "SET_AGREEMENTS",
-    agreements: items
+    agreements: items,
   });
-  
+}
+
+export async function setContracts(signer, dispatch) {
+  const ricksContract = new ethers.Contract(
+    process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+    SuperFractionalizer.abi,
+    signer
+  );
+
+  dispatch({
+    type: "SET_RICKS_CONTRACT",
+    ricksContract: ricksContract,
+  });
 }
 // export async function buyNft(nft) {
 //   /* needs the user to sign the transaction, so will use Web3Provider and sign it */

@@ -12,7 +12,6 @@ export const ApplicationWalletButton = ({ provider, onConnect, disconnect, dispa
     if (provider !== null) {
         const handleAccountsChanged = (accounts) => {
           // eslint-disable-next-line no-console
-          console.log("accountsChanged", accounts);
           dispatch({
             type: "SET_ADDRESS",
             address: accounts[0],

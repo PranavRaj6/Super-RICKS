@@ -5,7 +5,7 @@ import { connectWallet, disconnectWallet } from "../../../utils/wallet";
 import { ApplicationLogo } from "../application-logo";
 import { ApplicationAccountButton } from "./components/application-account-button";
 import { ApplicationWalletButton } from "./components/application-wallet-button";
-// import { ApplicationCreateTokenButton } from './components/application-create-token-button';
+import { ApplicationCreateTokenButton } from "./components/application-create-token-button";
 
 export const HEADER_HEIGHT = 80;
 
@@ -22,10 +22,7 @@ export const ApplicationHeader = () => {
             <Space size={24}>
               {state.address ? (
                 <>
-                  {/* <ApplicationCreateTokenButton
-                    onLoadNFT={onLoadNFT}
-                    onCreateToken={onCreateToken}
-                  /> */}
+                  <ApplicationCreateTokenButton />
                   <ApplicationAccountButton
                     account={state.address}
                     provider={state.provider}

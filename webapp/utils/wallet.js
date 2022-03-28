@@ -41,6 +41,7 @@ export async function connectWallet(dispatch) {
     web3Provider,
     address,
     chainId: network.chainId,
+    signer
   });
 }
 
