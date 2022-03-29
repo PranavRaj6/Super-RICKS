@@ -13,8 +13,8 @@ import React, { useCallback, useState, useContext } from "react";
 import { GlobalContext } from "../../../../context/store";
 import { ethers, providers } from "ethers";
 import { TokenCard } from "../../../../modules/token/components/token-card/token-card";
-import ERC721 from "../../../../../contracts/artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json";
-import SuperFractionalizer from "../../../../../contracts/artifacts/contracts/SuperFractionalizer.sol/SuperFractionalizer.json";
+import IERC721 from "../../../../abi/IERC721.json";
+import RickdiculusStreams from "../../../../abi/RickdiculusStreams.json";
 import Icon from "@ant-design/icons";
 import { CloseIcon } from "../../../../common/icons/close-icon";
 import { loadAgreements } from "../../../../utils/client";
@@ -44,7 +44,7 @@ export const ApplicationCreateTokenButton = React.memo(
         setLoading(true);
         const nftContract = new ethers.Contract(
           values.tokenAddress,
-          ERC721.abi,
+          IERC721.abi,
           state.signer
         );
         await nftContract.approve(
@@ -53,7 +53,7 @@ export const ApplicationCreateTokenButton = React.memo(
         );
         const ricksContract = new ethers.Contract(
           process.env.NEXT_PUBLIC_RICKS_CONTRACT,
-          SuperFractionalizer.abi,
+          RickdiculusStreams.abi,
           state.signer
         );
         await delay(5000);
@@ -97,7 +97,7 @@ export const ApplicationCreateTokenButton = React.memo(
       ) {
         const nftContract = new ethers.Contract(
           values.tokenAddress,
-          ERC721.abi,
+          IERC721.abi,
           state.signer
         );
         tokenUri = await nftContract.tokenURI(

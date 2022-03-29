@@ -14,17 +14,17 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const SuperFractionalizer = await hre.ethers.getContractFactory(
-    "SuperFractionalizer"
+  const RickdiculusStreams = await hre.ethers.getContractFactory(
+    "RickdiculusStreams"
   );
-  const superFractionalizer = await SuperFractionalizer.deploy(
-    "0xF5F666AC8F581bAef8dC36C7C8828303Bd4F8561",
-    "0xF0d7d1D47109bA426B9D8A3Cde1941327af1eea3"
+  const rickdiculusStreams = await RickdiculusStreams.deploy(
+    "0x200657E2f123761662567A1744f9ACAe50dF47E6",
+    "0xEB796bdb90fFA0f28255275e16936D25d3418603"
   );
 
-  await superFractionalizer.deployed();
+  await rickdiculusStreams.deployed();
 
-  console.log("SuperFractionalizer deployed to:", superFractionalizer.address);
+  console.log("RickdiculusStreams deployed to:", rickdiculusStreams.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

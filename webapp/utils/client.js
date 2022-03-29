@@ -3,18 +3,18 @@ import { ethers, providers } from "ethers";
 import axios from "axios";
 import Web3Modal from "web3modal";
 
-import SuperFractionalizer from "../../contracts/artifacts/contracts/SuperFractionalizer.sol/SuperFractionalizer.json";
-import ERC721 from "../../contracts/artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json";
+import RickdiculusStreams from "../abi/RickdiculusStreams.json";
+import IERC721 from "../abi/IERC721.json";
 
 export async function loadAgreements(dispatch) {
   /* create a generic provider and query for unsold market items */
   const alchemyProvider = new providers.AlchemyProvider(
-    "kovan",
+    80001,
     process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
   );
   const contract = new ethers.Contract(
     process.env.NEXT_PUBLIC_RICKS_CONTRACT,
-    SuperFractionalizer.abi,
+    RickdiculusStreams.abi,
     alchemyProvider
   );
   const data = await contract.fetchAllAgreements();
@@ -31,7 +31,7 @@ export async function loadAgreements(dispatch) {
       let ricksAddress = ethers.utils.getAddress(i.ricksAddress);
       const nftContract = new ethers.Contract(
         tokenAddress,
-        ERC721.abi,
+        IERC721.abi,
         alchemyProvider
       );
       const tokenUri = await nftContract.tokenURI(i.tokenId);
@@ -62,7 +62,7 @@ export async function loadAgreements(dispatch) {
 export async function setContracts(signer, dispatch) {
   const ricksContract = new ethers.Contract(
     process.env.NEXT_PUBLIC_RICKS_CONTRACT,
-    SuperFractionalizer.abi,
+    RickdiculusStreams.abi,
     signer
   );
 

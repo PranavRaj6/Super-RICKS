@@ -50,7 +50,8 @@ export const TokenActionBar = React.memo(function TokenActionBar({
                   cancelText: "Cancel",
                   centered: true,
                   icon: null,
-                  onOk: async () => await onRepay(),
+                  onOk: async () =>
+                    await onRepay(agreement.amount, agreement.ricksAddress),
                 })
               }
             >

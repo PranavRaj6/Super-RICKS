@@ -1,30 +1,22 @@
-// SPDX-License-Identifier: AGPLv3
-pragma solidity ^0.8.0;
+//SPDX-License-Identifier: Unlicense
+pragma solidity ^0.8.10;
 
 import {ISuperfluid, ISuperToken, ISuperApp, ISuperAgreement, SuperAppDefinitions} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol"; //"@superfluid-finance/ethereum-monorepo/packages/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-
 import {CFAv1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/CFAv1Library.sol";
-
 import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
-
+import {ISuperTokenFactory} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
 import {SuperAppBase} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
-
-import {ISuperFractionalizer} from "./interfaces/ISuperFractionalizer.sol";
 import {SuperFractionalized} from "./SuperFractionalized.sol";
 import {ISuperFractionalized} from "./interfaces/ISuperFractionalized.sol";
-import {IStableDebtToken} from "./interfaces/IStableDebtToken.sol";
-// import {IPool} from "./interfaces/IPool.sol";
-// import {IPoolDataProvider} from "./interfaces/IPoolDataProvider.sol";
-import {ILendingPool} from "./interfaces/ILendingPool.sol";
-import {IProtocolDataProvider} from "./interfaces/IProtocolDataProvider.sol";
+
+import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import {SafeERC20, SafeMath} from "./utils/Libraries.sol";
-import {ISuperTokenFactory} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperTokenFactory.sol";
 
-contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
+contract RickdiculusStreams is SuperAppBase {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using Counters for Counters.Counter;
@@ -36,19 +28,15 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
     CFAv1Library.InitData public cfaV1;
 
     ISuperfluid private _host; // host
-    IConstantFlowAgreementV1 private _cfa; // the stored constant flow agreement class address
+    IConstantFlowAgreementV1 private _cfa;
 
-    // Aave pool management ! Mumbai addresses !
-    ILendingPool constant aaveLendingPool =
-        ILendingPool(address(0xE0fBa4Fc209b4948668006B2bE61711b7f465bAe));
-    IProtocolDataProvider constant aaveDataProvider =
-        IProtocolDataProvider(
-            address(0x3c73A5E5785cAC854D468F727c606C07488a29D6)
-        );
+    IPool constant aaveLendingPool =
+        IPool(address(0x6C9fB0D5bD9429eb9Cd96B85B81d872281771E6B));
+
     IERC20 constant dai =
-        IERC20(address(0xFf795577d9AC8bD7D90Ee22b6C1703490b6512FD));
+        IERC20(address(0x9A753f0F7886C9fbF63cF59D0D4423C5eFaCE95B));
     IERC20 constant aDai =
-        IERC20(address(0xdCf0aF9e59C002FA3AA091a46196b37530FD48a8));
+        IERC20(address(0xDD4f3Ee61466C4158D394d57f3D4C397E91fBc51));
 
     ISuperTokenFactory internal immutable _factory;
 
@@ -136,7 +124,7 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
         uint256 amount = _amount * decimals;
         dai.transferFrom(msg.sender, address(this), amount);
         dai.approve(address(aaveLendingPool), amount);
-        aaveLendingPool.deposit(address(dai), amount, msg.sender, 0);
+        aaveLendingPool.supply(address(dai), amount, msg.sender, 0);
         LoanAgreements[_ricksAddress].delegator = msg.sender;
         LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
             .inactive;
@@ -150,14 +138,12 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
         );
         require(
             LoanAgreements[_ricksAddress].agreementState ==
-                LoanAgreementState.inactive,
-            "loan agreement should be inactive"
+                LoanAgreementState.closed,
+            "loan agreement should be closed"
         );
         uint256 amount = _amount * decimals;
         aDai.transferFrom(msg.sender, address(this), amount);
         aaveLendingPool.withdraw(address(dai), amount, msg.sender);
-        LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
-            .closed;
     }
 
     function createLoanAgreement(
@@ -217,7 +203,7 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
         uint amountToBorrow = LoanAgreements[_ricksAddress].amount;
         address delegator = LoanAgreements[_ricksAddress].delegator;
         address borrower = LoanAgreements[_ricksAddress].borrower;
-        aaveLendingPool.borrow(address(dai), amountToBorrow, 1, 0, delegator);
+        aaveLendingPool.borrow(address(dai), amountToBorrow, 2, 0, delegator);
 
         // borrowers[msg.sender].borrowed = amountToBorrow;
         LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
@@ -250,9 +236,99 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
 
         dai.transferFrom(msg.sender, address(this), borrowedAmount);
         dai.approve(address(aaveLendingPool), borrowedAmount);
-        aaveLendingPool.repay(address(dai), borrowedAmount, 1, delegator);
+        aaveLendingPool.repay(address(dai), borrowedAmount, 2, delegator);
         LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
-            .inactive;
+            .closed;
+    }
+
+    /// @dev Thrown when user has not approved this contract to transferFrom
+    error NotApproved();
+
+    /// @dev Thrown when user does not have all shards
+    error NotPermitted();
+
+    /// @dev Thrown when user is not the owner of the token
+    error NotTokenOwner();
+
+    event Fractionalized(
+        address receiver,
+        address indexed erc721Token,
+        uint256 indexed tokenId,
+        address indexed superFractionalized,
+        uint256 initialSupply
+    );
+
+    /// @dev Implementation of ISuperFractionalizer.fractionalize
+    /// MUST have approved SuperFractionalizer
+    /// MUST be owner of NFT
+    function fractionalize(
+        address _tokenAddress,
+        string memory _name,
+        string memory _symbol,
+        uint256 _tokenId,
+        uint256 _initialSupply
+    ) internal returns (address _superFractionalized) {
+        IERC721 _erc721 = IERC721(_tokenAddress);
+        // CHECKS
+        if (msg.sender != _erc721.ownerOf(_tokenId)) revert NotTokenOwner();
+        if (address(this) != _erc721.getApproved(_tokenId))
+            revert NotApproved();
+
+        // DEPLOY
+        bytes32 salt = keccak256(abi.encode(_erc721, _tokenId));
+        bytes memory bytecode = type(SuperFractionalized).creationCode;
+        assembly {
+            _superFractionalized := create2(
+                0,
+                add(bytecode, 32),
+                mload(bytecode),
+                salt
+            )
+        }
+
+        // UPGRADE WITH THE FACTORY
+        _factory.initializeCustomSuperToken(_superFractionalized);
+
+        // INTIALIZE
+        ISuperFractionalized(_superFractionalized).initialize(
+            _name,
+            _symbol,
+            _initialSupply,
+            _tokenId,
+            address(_erc721),
+            msg.sender
+        );
+
+        // LOCK THE NFT
+        _erc721.transferFrom(msg.sender, address(this), _tokenId);
+
+        // EMIT
+        emit Fractionalized(
+            msg.sender,
+            address(_erc721),
+            _tokenId,
+            _superFractionalized,
+            _initialSupply
+        );
+    }
+
+    function reconstitute(address _ricksAddress) public {
+        if (msg.sender != LoanAgreements[_ricksAddress].borrower)
+            revert NotTokenOwner();
+
+        if (
+            IERC20(_ricksAddress).balanceOf(msg.sender) !=
+            IERC20(_ricksAddress).totalSupply()
+        ) revert NotPermitted();
+        IERC721(LoanAgreements[_ricksAddress].tokenAddress).approve(
+            msg.sender,
+            LoanAgreements[_ricksAddress].tokenId
+        );
+        IERC721(LoanAgreements[_ricksAddress].tokenAddress).transferFrom(
+            address(this),
+            msg.sender,
+            LoanAgreements[_ricksAddress].tokenId
+        );
     }
 
     /// @dev If a new stream is opened, or an existing one is opened
@@ -323,7 +399,7 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
         ISuperToken _superToken,
         address _agreementClass,
         bytes32, //_agreementId,
-        bytes calldata agreementData,
+        bytes calldata, /*_agreementData*/
         bytes calldata, //_cbdata,
         bytes calldata _ctx
     )
@@ -392,59 +468,5 @@ contract SuperFractionalizer is ISuperFractionalizer, SuperAppBase {
         );
         require(_isCFAv1(agreementClass), "RedirectAll: only CFAv1 supported");
         _;
-    }
-
-    /// @dev Implementation of ISuperFractionalizer.fractionalize
-    /// MUST have approved SuperFractionalizer
-    /// MUST be owner of NFT
-    function fractionalize(
-        address _tokenAddress,
-        string memory _name,
-        string memory _symbol,
-        uint256 _tokenId,
-        uint256 _initialSupply
-    ) internal returns (address _superFractionalized) {
-        IERC721 _erc721 = IERC721(_tokenAddress);
-        // CHECKS
-        if (msg.sender != _erc721.ownerOf(_tokenId)) revert NotTokenOwner();
-        if (address(this) != _erc721.getApproved(_tokenId))
-            revert NotApproved();
-
-        // DEPLOY
-        bytes32 salt = keccak256(abi.encode(_erc721, _tokenId));
-        bytes memory bytecode = type(SuperFractionalized).creationCode;
-        assembly {
-            _superFractionalized := create2(
-                0,
-                add(bytecode, 32),
-                mload(bytecode),
-                salt
-            )
-        }
-
-        // UPGRADE WITH THE FACTORY
-        _factory.initializeCustomSuperToken(_superFractionalized);
-
-        // INTIALIZE
-        ISuperFractionalized(_superFractionalized).initialize(
-            _name,
-            _symbol,
-            _initialSupply,
-            _tokenId,
-            address(_erc721),
-            msg.sender
-        );
-
-        // LOCK THE NFT
-        _erc721.transferFrom(msg.sender, address(this), _tokenId);
-
-        // EMIT
-        emit Fractionalized(
-            msg.sender,
-            address(_erc721),
-            _tokenId,
-            _superFractionalized,
-            _initialSupply
-        );
     }
 }

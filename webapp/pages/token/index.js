@@ -15,10 +15,10 @@ import Link from "next/link";
 import Icon from "@ant-design/icons";
 import { GasIcon } from "../../common/icons/gas-icon";
 import { TokenActionBar } from "../../modules/token";
-import SuperFractionalizer from "../../../contracts/artifacts/contracts/SuperFractionalizer.sol/SuperFractionalizer.json";
-import ERC721 from "../../../contracts/artifacts/@openzeppelin/contracts/token/ERC721/ERC721.sol/ERC721.json";
+import RickdiculusStreams from "../../abi/RickdiculusStreams.json";
+import IERC721 from "../../abi/IERC721.json";
 import IERC20 from "../../../contracts/artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json";
-import IStableDebtToken from "../../../contracts/artifacts/contracts/interfaces/IStableDebtToken.sol/IStableDebtToken.json";
+import IVariableDebtToken from ".././../abi/IVariableDebtToken.json";
 import { loadAgreements } from "../../utils/client";
 
 export default function IndexPage() {
@@ -68,7 +68,7 @@ export default function IndexPage() {
         let ricksAddress = ethers.utils.getAddress(_loanAgreement.ricksAddress);
         const nftContract = new ethers.Contract(
           tokenAddress,
-          ERC721.abi,
+          IERC721.abi,
           state.signer
         );
         const tokenUri = await nftContract.tokenURI(_loanAgreement.tokenId);
@@ -99,9 +99,34 @@ export default function IndexPage() {
 
   const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
-  const onRepay = () => {};
+  const onRepay = async (_amount, _ricksAddress) => {
+    const erc20Contract = new ethers.Contract(
+      process.env.NEXT_PUBLIC_ERC20_TOKEN,
+      IERC20.abi,
+      state.signer
+    );
+    await erc20Contract.approve(
+      process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+      ethers.BigNumber.from((_amount * 10 ** 18).toString())
+    );
+    await delay(5000);
+    const ricksContract = new ethers.Contract(
+      process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+      RickdiculusStreams.abi,
+      state.signer
+    );
+    await ricksContract.repay(ethers.utils.getAddress(_ricksAddress));
+    await delay(5000);
+
+    await setTimeout(function () {
+      loadAgreements(dispatch);
+    }, 3000);
+  };
+
   const onReconstitute = () => {};
+
   const startStream = () => {};
+
   const onDelegate = async (_amount, _ricksAddress) => {
     const erc20Contract = new ethers.Contract(
       process.env.NEXT_PUBLIC_ERC20_TOKEN,
@@ -114,8 +139,8 @@ export default function IndexPage() {
     );
     await delay(5000);
     const debtTokenContract = new ethers.Contract(
-      process.env.NEXT_PUBLIC_STABLE_DEBT_TOKEN,
-      IStableDebtToken.abi,
+      process.env.NEXT_PUBLIC_VARIABLE_DEBT_TOKEN,
+      IVariableDebtToken.abi,
       state.signer
     );
     await debtTokenContract.approveDelegation(
@@ -126,7 +151,7 @@ export default function IndexPage() {
 
     const ricksContract = new ethers.Contract(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
-      SuperFractionalizer.abi,
+      RickdiculusStreams.abi,
       state.signer
     );
     await delay(5000);
@@ -140,6 +165,7 @@ export default function IndexPage() {
       loadAgreements(dispatch);
     }, 3000);
   };
+
   const onWithdraw = () => {};
   const onNoAccount = () => {};
 
