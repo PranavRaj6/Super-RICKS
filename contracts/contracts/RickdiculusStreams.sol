@@ -347,7 +347,7 @@ contract RickdiculusStreams is SuperAppBase {
             uint256 streamedAmount = _superToken.balanceOf(address(this));
             if (
                 LoanAgreements[address(_superToken)].agreementState ==
-                LoanAgreementState.inactive
+                LoanAgreementState.closed
             ) {
                 _superToken.approve(
                     LoanAgreements[address(_superToken)].borrower,

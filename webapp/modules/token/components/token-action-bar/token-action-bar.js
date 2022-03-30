@@ -29,7 +29,7 @@ export const TokenActionBar = React.memo(function TokenActionBar({
                   cancelText: "Cancel",
                   centered: true,
                   icon: null,
-                  onOk: async () => await startStream(),
+                  onOk: async () => await startStream(agreement.ricksAddress),
                 })
               }
             >
@@ -136,7 +136,10 @@ export const TokenActionBar = React.memo(function TokenActionBar({
                   centered: true,
                   icon: null,
                   onOk: async () =>
-                    await onDelegate(Math.ceil(agreement.amount / 0.7), agreement.ricksAddress),
+                    await onDelegate(
+                      Math.ceil(agreement.amount / 0.7),
+                      agreement.ricksAddress
+                    ),
                 })
               }
             >

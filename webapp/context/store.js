@@ -11,6 +11,8 @@ const initialState = {
   agreements: [],
   signer: null,
   ricksContract: null,
+  sf: null,
+  sfSigner: null,
 };
 
 function reducer(state, action) {
@@ -23,6 +25,8 @@ function reducer(state, action) {
         address: action.address,
         chainId: action.chainId,
         signer: action.signer,
+        sf: action.sf,
+        sfSigner: action.sfSigner,
       };
     case "SET_ADDRESS":
       return {

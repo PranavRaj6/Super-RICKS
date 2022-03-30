@@ -1,5 +1,6 @@
 import { message, Row, Col, Image, Card, Typography, Badge, Tag } from "antd";
 import { ethers, providers } from "ethers";
+import { Framework } from "@superfluid-finance/sdk-core";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React, {
@@ -144,7 +145,22 @@ export default function IndexPage() {
     loadAgreements(dispatch);
   };
 
-  const startStream = () => {};
+  const startStream = async (_ricksAddress) => {
+    try {
+      const createFlowOperation = state.sf.cfaV1.createFlow({
+        flowRate: "10000000000000",
+        receiver: process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+        superToken: _ricksAddress,
+      });
+      console.log(createFlowOperation);
+
+      let txn = await createFlowOperation.exec(state.sfSigner);
+      txn.wait();
+      message.success("Stream Created! and treansfered amount!");
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const onDelegate = async (_amount, _ricksAddress) => {
     const erc20Contract = new ethers.Contract(

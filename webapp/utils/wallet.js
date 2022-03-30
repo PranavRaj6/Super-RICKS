@@ -1,4 +1,5 @@
 import { providers } from "ethers";
+import { Framework } from "@superfluid-finance/sdk-core";
 import WalletConnectProvider from "@walletconnect/web3-provider";
 import Web3Modal from "web3modal";
 
@@ -30,6 +31,13 @@ export async function connectWallet(dispatch) {
   // event listeners such as `.on()` will be different.
   const web3Provider = new providers.Web3Provider(provider);
 
+  const sf = await Framework.create({
+    chainId: 80001,
+    provider: web3Provider,
+  });
+
+  const sfSigner = sf.createSigner({ web3Provider: web3Provider });
+
   const signer = web3Provider.getSigner();
   const address = await signer.getAddress();
 
@@ -41,11 +49,13 @@ export async function connectWallet(dispatch) {
     web3Provider,
     address,
     chainId: network.chainId,
-    signer
+    signer,
+    sf,
+    sfSigner,
   });
 }
 
-export async function disconnectWallet( provider, dispatch) {
+export async function disconnectWallet(provider, dispatch) {
   await web3Modal.clearCachedProvider();
   if (provider.disconnect && typeof provider.disconnect === "function") {
     await provider.disconnect();
