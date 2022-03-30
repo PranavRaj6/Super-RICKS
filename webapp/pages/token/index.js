@@ -104,33 +104,45 @@ export default function IndexPage() {
     }
   }, [loanAgreement]);
 
-  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-
   const onRepay = async (_amount, _ricksAddress) => {
     const erc20Contract = new ethers.Contract(
       process.env.NEXT_PUBLIC_ERC20_TOKEN,
       IERC20.abi,
       state.signer
     );
-    await erc20Contract.approve(
+    let txn = await erc20Contract.approve(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
       ethers.BigNumber.from((_amount * 10 ** 18).toString())
     );
-    await delay(5000);
+    await txn.wait();
+    message.success("DAI has been approved!");
+
     const ricksContract = new ethers.Contract(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
       RickdiculusStreams.abi,
       state.signer
     );
-    await ricksContract.repay(ethers.utils.getAddress(_ricksAddress));
-    await delay(5000);
+    txn = await ricksContract.repay(ethers.utils.getAddress(_ricksAddress));
+    await txn.wait();
+    message.success("You have repaid your debt!");
 
-    await setTimeout(function () {
-      loadAgreements(dispatch);
-    }, 3000);
+    loadAgreements(dispatch);
   };
 
-  const onReconstitute = () => {};
+  const onReconstitute = async (_ricksAddress) => {
+    const ricksContract = new ethers.Contract(
+      process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+      RickdiculusStreams.abi,
+      state.signer
+    );
+    let txn = await ricksContract.reconstitute(
+      ethers.utils.getAddress(_ricksAddress)
+    );
+    await txn.wait();
+    message.success("NFT has been reconstituted");
+
+    loadAgreements(dispatch);
+  };
 
   const startStream = () => {};
 
@@ -140,37 +152,38 @@ export default function IndexPage() {
       IERC20.abi,
       state.signer
     );
-    await erc20Contract.approve(
+    let txn = await erc20Contract.approve(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
       ethers.BigNumber.from((_amount * 10 ** 18).toString())
     );
-    await delay(5000);
+    await txn.wait();
+    message.success("DAI has been approved");
+
     const debtTokenContract = new ethers.Contract(
       process.env.NEXT_PUBLIC_VARIABLE_DEBT_TOKEN,
       IVariableDebtToken.abi,
       state.signer
     );
-    await debtTokenContract.approveDelegation(
+    txn = await debtTokenContract.approveDelegation(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
       ethers.BigNumber.from((_amount * 10 ** 18).toString())
     );
-    await delay(5000);
+    await txn.wait();
+    message.success("Credit delegation has been approved");
 
     const ricksContract = new ethers.Contract(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
       RickdiculusStreams.abi,
       state.signer
     );
-    await delay(5000);
-    await ricksContract.delegate(
+    txn = await ricksContract.delegate(
       ethers.BigNumber.from(_amount.toString()),
       ethers.utils.getAddress(_ricksAddress)
     );
-    await delay(5000);
+    await txn.wait();
+    message.success("DAI has been deposited to AAVE pool!");
 
-    await setTimeout(function () {
-      loadAgreements(dispatch);
-    }, 3000);
+    loadAgreements(dispatch);
   };
 
   const onWithdraw = () => {};

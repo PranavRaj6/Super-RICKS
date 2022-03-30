@@ -59,7 +59,6 @@ contract RickdiculusStreams is SuperAppBase {
     }
 
     mapping(address => LoanAgreement) public LoanAgreements;
-    mapping(address => address[]) public tokenAddressToRicks;
     mapping(uint256 => LoanAgreement) public loanIdsToAgreement;
 
     uint256 constant decimals = 1e18;
@@ -90,12 +89,6 @@ contract RickdiculusStreams is SuperAppBase {
         _host.registerApp(configWord);
     }
 
-    /*
-     *@notice Utility to send number of contracts associated to a person
-     */
-    function getRicksCount(address _address) public view returns (uint256) {
-        return tokenAddressToRicks[_address].length;
-    }
 
     /* Returns all unsold market items */
     function fetchAllAgreements() public view returns (LoanAgreement[] memory) {
@@ -175,7 +168,6 @@ contract RickdiculusStreams is SuperAppBase {
             ricksAddress: _ricksAddress
         });
         LoanAgreements[_ricksAddress] = newAgreement;
-        tokenAddressToRicks[_tokenAddress].push(_ricksAddress);
         _loanIds.increment();
         uint256 newLoanId = _loanIds.current();
         loanIdsToAgreement[newLoanId] = newAgreement;
@@ -329,6 +321,7 @@ contract RickdiculusStreams is SuperAppBase {
             msg.sender,
             LoanAgreements[_ricksAddress].tokenId
         );
+        delete LoanAgreements[_ricksAddress];
     }
 
     /// @dev If a new stream is opened, or an existing one is opened

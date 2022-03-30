@@ -1,9 +1,7 @@
 import React, { useReducer, createContext, useEffect } from "react";
 
-import { connectWallet } from "../utils/wallet";
+import { connectWallet, disconnectWallet } from "../utils/wallet";
 import { loadAgreements, setContracts } from "../utils/client";
-
-
 
 const initialState = {
   provider: null,
@@ -24,7 +22,7 @@ function reducer(state, action) {
         web3Provider: action.web3Provider,
         address: action.address,
         chainId: action.chainId,
-        signer: action.signer
+        signer: action.signer,
       };
     case "SET_ADDRESS":
       return {
@@ -64,12 +62,56 @@ const Store = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    loadAgreements(dispatch);
+  }, [state.address]);
+
+  useEffect(() => {
     if (state.signer !== null) {
       setContracts(state.signer, dispatch);
     }
-    
-  }, [state.signer])
+  }, [state.signer]);
 
+  useEffect(() => {
+    if (state.provider && state.provider.on) {
+      const handleAccountsChanged = (accounts) => {
+        // eslint-disable-next-line no-console
+        console.log("accountsChanged", accounts);
+        connectWallet(dispatch);
+        loadAgreements(dispatch);
+        dispatch({
+          type: "SET_ADDRESS",
+          address: accounts[0],
+        });
+      };
+
+      // https://docs.ethers.io/v5/concepts/best-practices/#best-practices--network-changes
+      const handleChainChanged = (_hexChainId) => {
+        window.location.reload();
+      };
+
+      const handleDisconnect = (error) => {
+        // eslint-disable-next-line no-console
+        console.log("disconnect", error);
+        disconnectWallet(state.provider, dispatch);
+      };
+
+      state.provider.on("accountsChanged", handleAccountsChanged);
+      state.provider.on("chainChanged", handleChainChanged);
+      state.provider.on("disconnect", handleDisconnect);
+
+      // Subscription Cleanup
+      return () => {
+        if (state.provider.removeListener) {
+          state.provider.removeListener(
+            "accountsChanged",
+            handleAccountsChanged
+          );
+          state.provider.removeListener("chainChanged", handleChainChanged);
+          state.provider.removeListener("disconnect", handleDisconnect);
+        }
+      };
+    }
+  }, [state.provider]);
 
   return (
     <GlobalContext.Provider value={[state, dispatch]}>

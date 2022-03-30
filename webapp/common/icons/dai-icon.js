@@ -30,8 +30,8 @@ export const DAIIcon = React.memo(function DAIIcon(props) {
         r="309"
         fill="#fff"
         stroke="#ffce45"
-        stroke-miterlimit="10"
-        stroke-width="10.3"
+        strokeMiterlimit="10"
+        strokeWidth="10.3"
       />
       <path
         fill="#ffce45"

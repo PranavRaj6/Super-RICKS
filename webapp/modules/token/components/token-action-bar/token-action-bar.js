@@ -68,11 +68,12 @@ export const TokenActionBar = React.memo(function TokenActionBar({
                 Modal.confirm({
                   title: "Do you want to reconstitute your NFT?",
                   okType: "danger",
-                  okText: "Revoke",
+                  okText: "Reconstitute",
                   cancelText: "Cancel",
                   centered: true,
                   icon: null,
-                  onOk: async () => await onReconstitute(),
+                  onOk: async () =>
+                    await onReconstitute(agreement.ricksAddress),
                 })
               }
             >

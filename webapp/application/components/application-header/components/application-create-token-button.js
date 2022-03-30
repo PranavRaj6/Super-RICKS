@@ -8,6 +8,7 @@ import {
   Select,
   Space,
   Typography,
+  message,
 } from "antd";
 import React, { useCallback, useState, useContext } from "react";
 import { GlobalContext } from "../../../../context/store";
@@ -33,8 +34,6 @@ export const ApplicationCreateTokenButton = React.memo(
       initialSupply: 0,
     });
 
-    const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-
     const [drawerVisible, setDrawerVisible] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -47,17 +46,20 @@ export const ApplicationCreateTokenButton = React.memo(
           IERC721.abi,
           state.signer
         );
-        await nftContract.approve(
+        let txn = await nftContract.approve(
           process.env.NEXT_PUBLIC_RICKS_CONTRACT,
           ethers.BigNumber.from(values.tokenId)
         );
+        await txn.wait();
+        message.success("NFT was Approved!");
+
         const ricksContract = new ethers.Contract(
           process.env.NEXT_PUBLIC_RICKS_CONTRACT,
           RickdiculusStreams.abi,
           state.signer
         );
-        await delay(5000);
-        await ricksContract.createLoanAgreement(
+
+        txn = await ricksContract.createLoanAgreement(
           ethers.utils.getAddress(values.tokenAddress),
           values.name,
           values.symbol,
@@ -65,11 +67,13 @@ export const ApplicationCreateTokenButton = React.memo(
           ethers.BigNumber.from(values.initialSupply),
           ethers.BigNumber.from(values.amount)
         );
-        await delay(5000);
+        await txn.wait();
+        message.success(
+          "NFT has been fractionalized into streamable SUPER Tokens and agreement has been created!",
+          3
+        );
 
-        await setTimeout(function () {
-          loadAgreements(dispatch);
-        }, 3000);
+        loadAgreements(dispatch);
 
         setLoading(false);
         setDrawerVisible(false);
