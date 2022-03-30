@@ -13,11 +13,11 @@ import { GlobalContext } from "../../context/store";
 import { ApplicationPage } from "../../application";
 import Link from "next/link";
 import Icon from "@ant-design/icons";
-import { GasIcon } from "../../common/icons/gas-icon";
+import { DAIIcon } from "../../common/icons/dai-icon";
 import { TokenActionBar } from "../../modules/token";
 import RickdiculusStreams from "../../abi/RickdiculusStreams.json";
 import IERC721 from "../../abi/IERC721.json";
-import IERC20 from "../../../contracts/artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json";
+import IERC20 from "../../abi/IERC20.json";
 import IVariableDebtToken from ".././../abi/IVariableDebtToken.json";
 import { loadAgreements } from "../../utils/client";
 
@@ -71,7 +71,13 @@ export default function IndexPage() {
           IERC721.abi,
           state.signer
         );
+        const erc20Contract = new ethers.Contract(
+          ricksAddress,
+          IERC20.abi,
+          state.signer
+        );
         const tokenUri = await nftContract.tokenURI(_loanAgreement.tokenId);
+        const totalSupply = await erc20Contract.totalSupply();
         const name = await nftContract.name();
         const symbol = await nftContract.symbol();
         let item = {
@@ -85,6 +91,7 @@ export default function IndexPage() {
           name,
           symbol,
           agreementState: _loanAgreement.agreementState,
+          totalSupply: ethers.utils.formatUnits(totalSupply, 18),
         };
         setNFT(item);
       } catch (error) {
@@ -186,8 +193,6 @@ export default function IndexPage() {
     return ["", ""];
   }, [loanAgreement]);
 
-  const durationInDays = 5;
-
   return (
     <>
       <Head>
@@ -274,7 +279,7 @@ export default function IndexPage() {
 
               <Card
                 title={
-                  <Typography.Text strong={true}>{"Price"}</Typography.Text>
+                  <Typography.Text strong={true}>{"Amount"}</Typography.Text>
                 }
                 style={{ marginTop: 24 }}
               >
@@ -287,32 +292,32 @@ export default function IndexPage() {
                   }}
                 >
                   <Icon
-                    component={GasIcon}
+                    component={DAIIcon}
                     style={{ fontSize: "42px", marginRight: 16 }}
                   />
                   <Typography.Title level={2} style={{ marginBottom: 0 }}>
                     {nft ? Math.ceil(Number(nft.amount)) : "-"}
                   </Typography.Title>
 
-                  <Typography.Text
+                  {/* <Typography.Text
                     style={{ marginLeft: 24, marginTop: 16, marginBottom: 0 }}
                   >
                     {"/ day"}
-                  </Typography.Text>
+                  </Typography.Text> */}
                 </div>
               </Card>
 
               <Card
                 title={
-                  <Typography.Text strong={true}>{"Duration"}</Typography.Text>
+                  <Typography.Text strong={true}>
+                    {"Total Supply"}
+                  </Typography.Text>
                 }
                 style={{ marginTop: 24 }}
               >
                 <div>
                   <Typography.Text>
-                    {durationInDays +
-                      " " +
-                      (durationInDays > 1 ? "days" : "day")}
+                    {nft && nft.totalSupply ? nft.totalSupply : "-"}
                   </Typography.Text>
                 </div>
               </Card>

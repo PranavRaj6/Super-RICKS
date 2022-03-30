@@ -5,6 +5,7 @@ import Web3Modal from "web3modal";
 
 import RickdiculusStreams from "../abi/RickdiculusStreams.json";
 import IERC721 from "../abi/IERC721.json";
+import IERC20 from "../abi/IERC20.json";
 
 export async function loadAgreements(dispatch) {
   /* create a generic provider and query for unsold market items */
@@ -34,7 +35,13 @@ export async function loadAgreements(dispatch) {
         IERC721.abi,
         alchemyProvider
       );
+      const erc20Contract = new ethers.Contract(
+        ricksAddress,
+        IERC20.abi,
+        alchemyProvider
+      );
       const tokenUri = await nftContract.tokenURI(i.tokenId);
+      const totalSupply = await erc20Contract.totalSupply();
       const name = await nftContract.name();
       const symbol = await nftContract.symbol();
       let item = {
@@ -48,6 +55,7 @@ export async function loadAgreements(dispatch) {
         name,
         symbol,
         agreementState: i.agreementState,
+        totalSupply: ethers.utils.formatUnits(totalSupply, 18),
       };
       return item;
     })
