@@ -20,7 +20,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>rickdiculas</title>
+        <title>RICKdiculous Streams</title>
       </Head>
 
       <ApplicationPage>

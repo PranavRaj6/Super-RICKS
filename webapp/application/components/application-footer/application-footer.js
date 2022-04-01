@@ -14,13 +14,13 @@ export const ApplicationFooter = React.memo(function ApplicationFooter() {
               <Typography.Paragraph
                 style={{ marginBottom: 0, color: "#FFFFFF" }}
               >
-                Made in Italy with ❤️
+                Made in India with ❤️
               </Typography.Paragraph>
               <Typography.Paragraph
                 style={{ marginBottom: 0, color: "#FFFFFF" }}
                 strong={true}
               >
-                © rickdiculas
+                © RICKdiculous Streams
               </Typography.Paragraph>
             </div>
 
@@ -28,7 +28,7 @@ export const ApplicationFooter = React.memo(function ApplicationFooter() {
               <div style={{ display: "flex", flexDirection: "row" }}>
                 <div>
                   <a
-                    href="https://github.com/RajPranav6/rickdiculas"
+                    href="https://github.com/PranavRaj6/Super-RICKS"
                     target="_blank"
                     className={"g-link-no-border"}
                   >

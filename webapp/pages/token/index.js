@@ -1,6 +1,5 @@
 import { message, Row, Col, Image, Card, Typography, Badge, Tag } from "antd";
 import { ethers, providers } from "ethers";
-import { Framework } from "@superfluid-finance/sdk-core";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React, {
@@ -15,6 +14,7 @@ import { ApplicationPage } from "../../application";
 import Link from "next/link";
 import Icon from "@ant-design/icons";
 import { DAIIcon } from "../../common/icons/dai-icon";
+import { BigButton } from "../../common/components/big-button";
 import { TokenActionBar } from "../../modules/token";
 import RickdiculusStreams from "../../abi/RickdiculusStreams.json";
 import IERC721 from "../../abi/IERC721.json";
@@ -39,6 +39,7 @@ export default function IndexPage() {
 
   // Data needed to populate the page
   const [loanAgreement, setAgreement] = useState(null);
+  const [balance, setBalance] = useState(false);
   const [nft, setNFT] = useState(null);
 
   const onLoadAgreement = useCallback(async (ricksAddress) => {
@@ -47,6 +48,16 @@ export default function IndexPage() {
         ricksAddress
       );
       setAgreement(_loanAgreement);
+      const erc20Contract = new ethers.Contract(
+        process.env.NEXT_PUBLIC_ERC20_TOKEN,
+        IERC20.abi,
+        state.signer
+      );
+      let bal = await erc20Contract.balanceOf(state.address);
+      bal = ethers.utils.formatUnits(bal, 18);
+      if (bal > 0) {
+        setBalance(true);
+      }
     } catch (error) {
       message.error("An error occurred loading loanAgreement from token id.");
     }
@@ -113,7 +124,7 @@ export default function IndexPage() {
     );
     let txn = await erc20Contract.approve(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
-      ethers.BigNumber.from((_amount * 10 ** 18).toString())
+      ethers.utils.parseEther(_amount.toString())
     );
     await txn.wait();
     message.success("DAI has been approved!");
@@ -152,7 +163,6 @@ export default function IndexPage() {
         receiver: process.env.NEXT_PUBLIC_RICKS_CONTRACT,
         superToken: _ricksAddress,
       });
-      console.log(createFlowOperation);
 
       let txn = await createFlowOperation.exec(state.sfSigner);
       txn.wait();
@@ -170,7 +180,7 @@ export default function IndexPage() {
     );
     let txn = await erc20Contract.approve(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
-      ethers.BigNumber.from((_amount * 10 ** 18).toString())
+      ethers.utils.parseEther((_amount).toString())
     );
     await txn.wait();
     message.success("DAI has been approved");
@@ -182,7 +192,7 @@ export default function IndexPage() {
     );
     txn = await debtTokenContract.approveDelegation(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
-      ethers.BigNumber.from((_amount * 10 ** 18).toString())
+      ethers.utils.parseEther(_amount.toString())
     );
     await txn.wait();
     message.success("Credit delegation has been approved");
@@ -225,7 +235,7 @@ export default function IndexPage() {
   return (
     <>
       <Head>
-        <title>rickdiculas</title>
+        <title>RICKdiculous Streams</title>
       </Head>
 
       <ApplicationPage>
@@ -363,6 +373,28 @@ export default function IndexPage() {
                   onNoAccount={onNoAccount}
                   style={{ marginTop: 24 }}
                 />
+              )}
+
+              {!balance && (
+                <BigButton
+                  type={"primary"}
+                  shape={"round"}
+                  size={"large"}
+                  style={{ marginTop: 10 }}
+                  onClick={() =>
+                    Modal.confirm({
+                      title: "Do you want to transfer with Hyphen?",
+                      okType: "danger",
+                      okText: "Transfer",
+                      cancelText: "Cancel",
+                      centered: true,
+                      icon: null,
+                      onOk: async () => await onRepay(),
+                    })
+                  }
+                >
+                  {"Transfer with Hyphen"}
+                </BigButton>
               )}
             </div>
           </Col>

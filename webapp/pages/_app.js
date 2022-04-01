@@ -15,7 +15,7 @@ function MyApp({ Component, pageProps }) {
 
         <meta
           name="description"
-          content="Peer to peer renting of Neo N3 NFTs"
+          content="Unlocking the liquidity of NFTs with AAVE and Superfluid"
         />
       </Head>
 
