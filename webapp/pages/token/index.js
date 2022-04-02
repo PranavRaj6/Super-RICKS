@@ -9,6 +9,7 @@ import React, {
   useCallback,
   useContext,
 } from "react";
+import { RESPONSE_CODES } from "@biconomy/hyphen";
 import { GlobalContext } from "../../context/store";
 import { ApplicationPage } from "../../application";
 import Link from "next/link";
@@ -180,7 +181,7 @@ export default function IndexPage() {
     );
     let txn = await erc20Contract.approve(
       process.env.NEXT_PUBLIC_RICKS_CONTRACT,
-      ethers.utils.parseEther((_amount).toString())
+      ethers.utils.parseEther(_amount.toString())
     );
     await txn.wait();
     message.success("DAI has been approved");
@@ -214,6 +215,44 @@ export default function IndexPage() {
 
   const onWithdraw = () => {};
   const onNoAccount = () => {};
+
+  const onTransferWithHyphen = async (_amount) => {
+
+    // Code is dev ready but wont work as token address both testnet is different
+
+    // let preTransferStatus = await state.hyphen.depositManager.preDepositStatus({
+    //   tokenAddress: process.env.NEXT_PUBLIC_ERC20_TOKEN, // Token address on fromChain which needs to be transferred
+    //   amount: ethers.utils.parseEther(_amount.toString()), // Amount of tokens to be transferred in smallest unit eg wei
+    //   fromChainId: "", // Chain id from where tokens needs to be transferred
+    //   toChainId: 80001, // Chain id where tokens are supposed to be sent
+    //   userAddress: state.address, // User wallet address who want's to do the transfer
+    // });
+    // if (preTransferStatus.code === RESPONSE_CODES.OK) {
+    //   let approveTx = await state.hyphen.tokens.approveERC20(
+    //     process.env.NEXT_PUBLIC_ERC20_TOKEN,
+    //     preTransferStatus.depositContract,
+    //     ethers.utils.parseEther(_amount.toString())
+    //   );
+
+    //   // ⏱Wait for the transaction to confirm, pass a number of blocks to wait as param
+    //   await approveTx.wait(2);
+
+    //   let depositTx = await state.hyphen.depositManager.deposit({
+    //     sender: state.address,
+    //     receiver: state.address,
+    //     tokenAddress: process.env.NEXT_PUBLIC_ERC20_TOKEN,
+    //     depositContractAddress: "LiquidityPool address on fromChain",
+    //     amount: ethers.utils.parseEther(_amount.toString()), //Amount to be transferred. Denoted in smallest unit eg in wei",
+    //     fromChainId: "", // chainId of fromChain
+    //     toChainId: 80001, // chainId of toChain
+    //     useBiconomy: true, // OPTIONAL boolean flag specifying whether to use Biconomy for gas less transaction or not
+    //     tag: "Dapp specific identifier", // Can be any string, emitted from the contract during the deposit call; used for analytics
+    //   });
+
+    //   // Wait for 1 block confirmation
+    //   await depositTx.wait(1);
+    // }
+  };
 
   // Data needed for the status
   const status = useMemo(() => {
@@ -389,7 +428,7 @@ export default function IndexPage() {
                       cancelText: "Cancel",
                       centered: true,
                       icon: null,
-                      onOk: async () => await onRepay(),
+                      onOk: async () => await onTransferWithHyphen(nft.amount),
                     })
                   }
                 >

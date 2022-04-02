@@ -13,6 +13,7 @@ const initialState = {
   ricksContract: null,
   sf: null,
   sfSigner: null,
+  hyphen: null
 };
 
 function reducer(state, action) {
@@ -27,6 +28,7 @@ function reducer(state, action) {
         signer: action.signer,
         sf: action.sf,
         sfSigner: action.sfSigner,
+        hyphen: action.hyphen
       };
     case "SET_ADDRESS":
       return {
