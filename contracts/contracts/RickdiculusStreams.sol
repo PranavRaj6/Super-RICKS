@@ -90,7 +90,6 @@ contract RickdiculusStreams is SuperAppBase {
     }
 
 
-    /* Returns all unsold market items */
     function fetchAllAgreements() public view returns (LoanAgreement[] memory) {
         uint itemCount = _loanIds.current();
         uint currentIndex = 0;
@@ -105,9 +104,6 @@ contract RickdiculusStreams is SuperAppBase {
         return items;
     }
 
-    /**
-     * @dev Deposits an amount of dai to aave and delegates all its borrowing power to the pool
-     **/
     function delegate(uint256 _amount, address _ricksAddress) public {
         require(
             LoanAgreements[_ricksAddress].agreementState ==
@@ -121,7 +117,6 @@ contract RickdiculusStreams is SuperAppBase {
         LoanAgreements[_ricksAddress].delegator = msg.sender;
         LoanAgreements[_ricksAddress].agreementState = LoanAgreementState
             .inactive;
-        // emit Delegate(msg.sender, daiAmount);
     }
 
     function withdraw(uint256 _amount, address _ricksAddress) public {
@@ -175,12 +170,6 @@ contract RickdiculusStreams is SuperAppBase {
 
     // BORROWER METHODS
 
-    /**
-     * @dev Uses the pool credit delegation to borrow dai for a whitelisted borrower
-     * mints debt tokens for the user
-     * the token's rate is aave's stable rate + the pools rate (TBD)
-     * borrower has to be whitelisted
-     **/
     function borrow(address _ricksAddress) internal {
         require(
             LoanAgreements[_ricksAddress].delegator != address(0),
@@ -204,10 +193,6 @@ contract RickdiculusStreams is SuperAppBase {
         dai.transfer(borrower, amountToBorrow);
     }
 
-    /**
-     * @dev Borrowers burns a part of their debt by sending a corresponding amount of dai
-     * borrower has to be whitelisted
-     **/
     function repay(address _ricksAddress) external {
         require(
             LoanAgreements[_ricksAddress].borrower == msg.sender,
@@ -326,24 +311,18 @@ contract RickdiculusStreams is SuperAppBase {
 
     /// @dev If a new stream is opened, or an existing one is opened
     function _aggrementCreated(ISuperToken _superToken) private {
-        // @dev This will give me the new flowRate, as it is called in after callbacks
         int96 netFlowRate = _cfa.getNetFlow(_superToken, address(this));
 
-        // @dev If inFlowRate === 0, then delete existing flow.
         if (netFlowRate != int96(0)) {
-            // @dev if netFlowRate is zero, delete outflow.
             borrow(address(_superToken));
         }
     }
 
     /// @dev If a new stream is opened, or an existing one is opened
     function _aggrementTerminated(ISuperToken _superToken) private {
-        // @dev This will give me the new flowRate, as it is called in after callbacks
         int96 netFlowRate = _cfa.getNetFlow(_superToken, address(this));
 
-        // @dev If inFlowRate === 0, then delete existing flow.
         if (netFlowRate == int96(0)) {
-            // @dev if netFlowRate is zero, delete outflow.
             uint256 streamedAmount = _superToken.balanceOf(address(this));
             if (
                 LoanAgreements[address(_superToken)].agreementState ==

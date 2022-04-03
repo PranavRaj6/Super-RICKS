@@ -213,13 +213,36 @@ export default function IndexPage() {
     loadAgreements(dispatch);
   };
 
-  const onWithdraw = () => {};
+  const onWithdraw = async (_amount, _ricksAddress) => {
+    const erc20Contract = new ethers.Contract(
+      process.env.NEXT_PUBLIC_A_ERC20_TOKEN,
+      IERC20.abi,
+      state.signer
+    );
+    let txn = await erc20Contract.approve(
+      process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+      ethers.utils.parseEther(_amount.toString())
+    );
+    await txn.wait();
+    message.success("aDAI has been approved");
+    const ricksContract = new ethers.Contract(
+      process.env.NEXT_PUBLIC_RICKS_CONTRACT,
+      RickdiculusStreams.abi,
+      state.signer
+    );
+    txn = await ricksContract.withdraw(
+      ethers.BigNumber.from(_amount.toString()),
+      ethers.utils.getAddress(_ricksAddress)
+    );
+    await txn.wait();
+    message.success("DAI has been withdrawn from AAVE pool!");
+
+    loadAgreements(dispatch);
+  };
   const onNoAccount = () => {};
 
   const onTransferWithHyphen = async (_amount) => {
-
     // Code is dev ready but wont work as token address both testnet is different
-
     // let preTransferStatus = await state.hyphen.depositManager.preDepositStatus({
     //   tokenAddress: process.env.NEXT_PUBLIC_ERC20_TOKEN, // Token address on fromChain which needs to be transferred
     //   amount: ethers.utils.parseEther(_amount.toString()), // Amount of tokens to be transferred in smallest unit eg wei
@@ -233,10 +256,8 @@ export default function IndexPage() {
     //     preTransferStatus.depositContract,
     //     ethers.utils.parseEther(_amount.toString())
     //   );
-
     //   // ⏱Wait for the transaction to confirm, pass a number of blocks to wait as param
     //   await approveTx.wait(2);
-
     //   let depositTx = await state.hyphen.depositManager.deposit({
     //     sender: state.address,
     //     receiver: state.address,
@@ -248,7 +269,6 @@ export default function IndexPage() {
     //     useBiconomy: true, // OPTIONAL boolean flag specifying whether to use Biconomy for gas less transaction or not
     //     tag: "Dapp specific identifier", // Can be any string, emitted from the contract during the deposit call; used for analytics
     //   });
-
     //   // Wait for 1 block confirmation
     //   await depositTx.wait(1);
     // }
